@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "id": 0,
+      "name": "C22B"
+    },
+    {
+      "id": 1,
+      "name": "J5-1"
+    },
+    {
+      "id": 2,
+      "name": "J5-2"
+    },
+    {
+      "id": 3,
+      "name": "J6"
+    },
+    {
+      "id": 4,
+      "name": "J7"
+    }
+  ],
+  "info": {
+    "year": 2025,
+    "version": "1.0",
+    "contributor": "Label Studio"
+  }
+}

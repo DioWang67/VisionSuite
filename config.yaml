@@ -1,0 +1,232 @@
+# 主程式流水線配置
+# 用途：定義任務執行順序、日誌檔案和任務分組，控制整體處理流程
+pipeline:
+  # 日誌檔案路徑，記錄每個任務的執行狀態和錯誤訊息
+  log_file: "pipeline.log"
+  
+  # 任務分組，方便批量選擇相關任務
+  # 使用方式：可通過命令列參數 `--task-groups preprocess` 執行特定組
+  task_groups:
+    preprocess: ["format_conversion", "anomaly_detection"]  # 預處理組：格式轉換和異常檢測
+    augmentation: ["yolo_augmentation", "image_augmentation"]  # 增強組：YOLO 數據增強和圖像增強
+    split: ["dataset_splitter"]  # 分割組：數據集分割
+  
+  # 任務清單，定義每個任務的啟用狀態和依賴關係
+  # 使用方式：設置 enabled 為 true/false 控制是否執行，dependencies 確保任務順序正確
+  tasks:
+    - name: format_conversion
+      enabled: false  # 是否啟用此任務
+      dependencies: []  # 此任務無依賴，可獨立執行
+    # 圖像格式轉換任務，將指定格式的圖像轉換為目標格式（例如，BMP 轉 PNG）
+
+    - name: image_augmentation 
+      enabled: false  # 預設禁用，可通過命令列或修改此處啟用
+      dependencies: []  # 依賴異常檢測的輸出
+
+    # 異常檢測任務，生成二值化 mask
+    - name: anomaly_detection   
+      enabled: false
+      dependencies: []  # 依賴格式轉換的輸出
+
+    - name: yolo_augmentation
+      enabled: true
+      dependencies: []  # 依賴格式轉換的輸出
+
+    - name: dataset_splitter
+      enabled: true
+      dependencies: []  # 依賴 YOLO 增強的輸出
+
+# 圖像格式轉換配置
+# 用途：將指定格式的圖像轉換為目標格式（例如，BMP 轉 PNG）
+format_conversion:
+  input_dir: "./datasets/converter_target"  # 輸入圖像資料夾，包含待轉換的圖像
+  output_dir: "./datasets/converter_output"  # 輸出圖像資料夾，儲存轉換後的圖像
+  input_formats: [".bmp"]  # 支援的輸入檔案格式，可多選（例如，[".bmp", ".jpg"]）
+  output_format: ".png"  # 目標輸出格式（例如，.png、.jpg）
+  quality: 95  # JPG 輸出品質（1-100），僅對 .jpg/.jpeg 有效
+
+# 異常檢測配置
+# 用途：比較測試圖像與正常圖像，生成異常區域的二值化 mask
+anomaly_detection:
+  reference_folder: "./datasets/for_anomalib/train/good"  # 正常圖像資料夾，用於生成參考模板
+  test_folder: "./datasets/for_anomalib/test/Reversed_Connection"  # 測試圖像資料夾，通常來自 format_conversion 的輸出
+  output_folder: "./datasets/for_anomalib/ground_truth/Reversed_Connection"  # 異常 mask 輸出資料夾
+  threshold: 70  # 異常檢測閾值（0-255），控制 mask 的敏感度
+  input_formats: [".png", ".jpg", ".jpeg"]  # 支援的輸入圖像格式
+
+# YOLO 數據增強配置
+# 用途：對圖像和 YOLO 格式標註進行增強，生成多樣化的訓練數據
+yolo_augmentation:
+  input:
+    image_dir: "./target/yolo_augmentation/images"  # 輸入圖像資料夾
+    label_dir: "./target/yolo_augmentation/labels"  # 輸入標註資料夾（YOLO 格式的 .txt 文件）
+  output:
+    image_dir: "./datasets/yolo_augmentation_output/images"  # 增強後圖像輸出資料夾
+    label_dir: "./datasets/yolo_augmentation_output/labels"  # 增強後標註輸出資料夾
+  augmentation:
+    num_images: 20  # 每張圖像生成增強版本的數量
+    num_operations: [3, 5]  # 每次增強隨機應用的操作數（範圍：3 到 5）
+    operations:  # 增強操作參數
+      flip:
+        probability: 0  # 水平翻轉概率（0 表示禁用）
+      rotate:
+        angle: [0, 0]  # 隨機旋轉角度範圍（度），設為 [0, 0] 表示禁用
+      multiply:
+        range: [0.9, 1.1]  # 亮度增強範圍（0.9 表示稍暗，1.1 表示稍亮）
+      scale:
+        range: [1, 1]  # 縮放範圍（1 表示不縮放）
+      contrast:
+        range: [1, 1]  # 對比度調整範圍（1 表示不調整）
+      hue:
+        range: [0, 0]  # 色調調整範圍（0 表示不調整）
+      noise:
+        scale: [0, 0]  # 高斯噪聲範圍（0 表示不添加噪聲）
+      perspective:
+        scale: [0, 0]  # 透視變換範圍（0 表示不應用）
+      blur:
+        kernel: [1, 1]  # 模糊核大小範圍（1 表示不模糊）
+  processing:
+    num_workers: 2  # 多線程數量，建議設為 CPU 核心數的 1-2 倍
+
+# 圖像增強配置（無標註）
+# 用途：僅對圖像進行增強，不處理標註，適用於異常 mask 或無標註數據
+image_augmentation:
+  input:
+    image_dir: "./target"  # 輸入圖像資料夾，通常來自 anomaly_detection 的輸出
+  output:
+    image_dir: "./datasets/for_anomalib/train/good"  # 增強後圖像輸出資料夾
+  augmentation:
+    num_images: 200  # 每張圖像生成增強版本的數量
+    num_operations: [2, 4]  # 每次增強隨機應用的操作數（範圍：3 到 5）
+    operations:  # 增強操作參數
+      flip:
+        probability: 0  # 水平翻轉概率（0% 表示禁用）
+      rotate:
+        angle: [0, 1]  # 隨機旋轉角度範圍（-180 到 180 度，設為 [0, 0] 表示禁用）
+      multiply:
+        range: [0.95, 1.05]  # 亮度增強範圍（0.9 表示稍暗，1.1 表示稍亮）
+      scale:
+        range: [0.95, 1.05]  # 縮放範圍（1 表示不縮放）
+      contrast:
+        range: [0.95, 1.05]  # 對比度調整範圍（1 表示不調整）
+      hue:
+        range: [-5, 5]  # 色調調整範圍（0 表示不調整）
+      noise:
+        scale: [1, 3]  # 高斯噪聲範圍，用於模擬圖像干擾（0 表示不添加）
+      perspective:
+        scale: [0.01, 0.02]  # 透視變換範圍，模擬不同拍攝角度（0 表示不應用）
+      blur:
+        kernel: [1, 3]  # 模糊核大小範圍，模擬不同清晰度（1 表示不模糊）
+  processing:
+    num_workers: 2  # 多線程數量，建議設為 CPU 核心數的 1-2 倍
+
+# 數據集分割配置
+# 用途：將增強後的圖像和標註分割為訓練、驗證和測試集
+train_test_split:
+  input:
+    image_dir: "./datasets/yolo_augmentation_output/images"  # 增強後圖像輸出資料夾
+    label_dir: "./datasets/yolo_augmentation_output/labels"  # 增強後標註輸出資料夾
+  output:
+    output_dir: "./datasets/split_dataset"  # 分割後數據集輸出資料夾（包含 train/val/test 子目錄）
+  split_ratios:
+    train: 0.7  # 訓練集比例（70%）
+    val: 0.15  # 驗證集比例（15%）
+    test: 0.15  # 測試集比例（15%）
+  input_formats: [".png", ".jpg", ".jpeg"]  # 支援的圖像格式
+  label_format: ".txt"  # 標註檔案格式（YOLO 格式的 .txt 文件）
+
+# 使用說明：
+# 1. 任務選擇：
+#    - 通過修改 pipeline.tasks 中各任務的 enabled 為 true/false 控制是否執行
+#    - 使用命令列參數 --tasks 指定任務，例如：python main_pipeline.py --tasks format_conversion anomaly_detection
+#    - 使用任務組，例如：python main_pipeline.py --task-groups preprocess
+#    - 使用互動模式：python main_pipeline.py --interactive
+#    - 排除任務：python main_pipeline.py --exclude-tasks image_augmentation
+#
+# 2. 檔案格式客製化：
+#    - 在 format_conversion 中設置 input_formats 和 output_format，例如將 .bmp 轉為 .png
+#    - 命令列覆蓋：python firmado main_pipeline.py --input-format .jpg --output-format .png
+#
+# 3. 依賴管理：
+#    - 每個任務的 dependencies 確保執行順序基础序正確，例如 anomaly_detection 依賴 format_conversion
+#    - 主程式會自動檢查並添加依賴任務
+#
+# 4. 日誌與錯誤：
+#    - 執行結果和錯誤記錄在 pipeline.log，可用於除錯
+#
+# 5. 路徑與資料夾：
+#    - 確保所有 input_dir 和 reference_folder 包含有效檔案
+#    - 輸出資料夾會自動創建，無需手動建立
+
+
+# #### 使用說明
+# 這個 `config.yaml` 文件是圖像處理和數據增強流水線的核心配置文件，與 `main_pipeline.py` 和相關模組配合使用。以下是如何使用它的詳細指南：
+
+# 1. **環境設置**：
+#   - 確保已安裝 Conda 環境，並包含以下依賴：
+#     - `opencv-python`：用於圖像處理
+#     - `albumentations`：用於圖像增強
+#     - `pyyaml`：解析 YAML 文件
+#     - `tqdm`：顯示進度條
+#     - `scikit-learn`：數據集分割
+#     - `torch`：檢查 PyTorch 環境（用於 `yolo_data_augmentor.py`）
+#   - 使用 `start.bat` 啟動環境：
+#     ```bash
+#     start.bat
+#     ```
+
+# 2. **配置 `config.yaml`**：
+#   - **路徑**：確保 `input_dir`, `reference_folder`, `test_folder`, `label_dir` 等指向正確的資料夾，且包含相應的圖像或標註檔案。
+#   - **格式**：在 `format_conversion.input_formats` 和 `output_format` 中指定輸入和輸出格式（例如，`.bmp` 轉 `.png`）。
+#   - **任務控制**：
+#     - 設置 `pipeline.tasks[].enabled` 為 `true` 或 `false` 控制任務執行。
+#     - 在 `pipeline.tasks[].dependencies` 中指定依賴任務，確保執行順序。
+#     - 在 `pipeline.task_groups` 中定義任務組，方便批量選擇。
+#   - **增強參數**：在 `yolo_augmentation` 和 `image_augmentation` 中調整 `num_images`、`num_operations` 和 `operations` 下的參數（如 `flip.probability`, `rotate.angle`），以控制增強效果。
+#   - **分割比例**：在 `train_test_split.split_ratios` 中設置訓練、驗證和測試集比例，確保總和為 1.0。
+
+# 3. **運行流水線**：
+#   - **完整流程**（執行所有啟用任務）：
+#     ```bash
+#     python main_pipeline.py
+#     ```
+#   - **指定任務**：
+#     ```bash
+#     python main_pipeline.py --tasks format_conversion anomaly_detection
+#     ```
+#   - **排除任務**：
+#     ```bash
+#     python main_pipeline.py --exclude-tasks image_augmentation
+#     ```
+#   - **使用任務組**：
+#     ```bash
+#     python main_pipeline.py --task-groups preprocess
+#     ```
+#   - **互動模式**（運行時選擇任務）：
+#     ```bash
+#     python main_pipeline.py --interactive
+#     ```
+#   - **客製化格式**：
+#     ```bash
+#     python main_pipeline.py --tasks format_conversion --input-format .jpg --output-format .png
+#     ```
+
+# 4. **檢查結果**：
+#   - 查看 `pipeline.log` 文件，檢查任務執行狀態和錯誤訊息。
+#   - 檢查輸出資料夾：
+#     - `./target/pcba_fail_png`：格式轉換後的圖像
+#     - `./output/masks`：異常檢測生成的 mask
+#     - `./outputF/images` 和 `./outputF/labels`：YOLO 增強的圖像和標註
+#     - `./outputF/images_no_labels`：圖像增強的結果
+#     - `./split_dataset`：分割後的訓練、驗證和測試集
+
+# 5. **注意事項**：
+#   - 確保輸入資料夾存在且包含正確格式的檔案，否則可能導致錯誤。
+#   - 若 `yolo_augmentation` 需要標註，確保 `label_dir` 中的 `.txt` 文件與圖像檔案名稱對應。
+#   - 調整 `num_workers` 時，考慮系統 CPU 核心數，避免內存過載。
+#   - 若需啟用 `image_augmentation`，將其 `enabled` 設為 `true` 或通過命令列指定。
+
+# #### 總結
+# 這個帶註解的 `config.yaml` 文件提供了清晰的指導，幫助使用者理解每個參數的用途和配置方式。結合 `main_pipeline.py` 和其他模組（`image_format_converter.py`, `anomaly_mask_generator.py`, `yolo_data_augmentor.py`, `image_augmentor.py`, `dataset_splitter.py`），用戶可以靈活選擇任務、客製化檔案格式並調整增強參數。請確認所有路徑和檔案格式正確，並測試流水線以確保順利運行。
+# # 注意：此配置文件與 `main_pipeline.py` 和其他模組配合使用，確保所有路徑和檔案格式正確。
+# # 若有任何問題，請檢查 `pipeline.log` 以獲取

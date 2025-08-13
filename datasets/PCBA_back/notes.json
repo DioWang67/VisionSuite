@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "id": 0,
+      "name": "D16"
+    },
+    {
+      "id": 1,
+      "name": "J2-1-back"
+    },
+    {
+      "id": 2,
+      "name": "J2-2-back"
+    },
+    {
+      "id": 3,
+      "name": "R10"
+    },
+    {
+      "id": 4,
+      "name": "R11"
+    }
+  ],
+  "info": {
+    "year": 2025,
+    "version": "1.0",
+    "contributor": "Label Studio"
+  }
+}
