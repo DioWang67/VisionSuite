@@ -1,6 +1,7 @@
 import sys
 import logging
 import argparse
+import yaml
 from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
@@ -14,13 +15,16 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QGroupBox,
+    QDialog,
+    QFormLayout,
+    QDialogButtonBox,
 )
 
 from main_pipeline import load_config, setup_logging, run_pipeline
 
 
 class QTextEditLogger(logging.Handler):
-    """將日誌輸出導向 QTextEdit"""
+    """將日誌輸出導向 QTextEdit""" 
 
     def __init__(self, widget: QTextEdit):
         super().__init__()
@@ -31,6 +35,85 @@ class QTextEditLogger(logging.Handler):
         self.widget.append(msg)
 
 
+class ConfigEditorDialog(QDialog):
+    """以表單方式編輯 config.yaml"""
+
+    def __init__(self, config_path: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.config_path = config_path
+        self.setWindowTitle("編輯配置")
+        self.resize(500, 600)
+        self.setStyleSheet(
+            """
+            QWidget{font-size:14px;}
+            QGroupBox{font-weight:bold; border:1px solid #cccccc; margin-top:10px;}
+            QGroupBox::title{subcontrol-origin: margin; left:10px; padding:0 3px 0 3px;}
+            QLineEdit{padding:4px;}
+            """
+        )
+
+        self.config = load_config(config_path)
+
+        layout = QVBoxLayout(self)
+
+        # 流水線設定
+        pipeline_group = QGroupBox("流水線")
+        pipeline_layout = QFormLayout()
+        self.log_file_edit = QLineEdit(self.config["pipeline"].get("log_file", ""))
+        pipeline_layout.addRow("日誌檔案", self.log_file_edit)
+        pipeline_group.setLayout(pipeline_layout)
+        layout.addWidget(pipeline_group)
+
+        # 任務啟用
+        tasks_group = QGroupBox("任務啟用")
+        tasks_layout = QVBoxLayout()
+        self.task_checkboxes: dict[str, QCheckBox] = {}
+        for task in self.config["pipeline"]["tasks"]:
+            cb = QCheckBox(task["name"])
+            cb.setChecked(task.get("enabled", True))
+            self.task_checkboxes[task["name"]] = cb
+            tasks_layout.addWidget(cb)
+        tasks_group.setLayout(tasks_layout)
+        layout.addWidget(tasks_group)
+
+        # 格式轉換設定
+        fc = self.config.get("format_conversion", {})
+        fc_group = QGroupBox("格式轉換")
+        fc_layout = QFormLayout()
+        self.fc_input_dir = QLineEdit(fc.get("input_dir", ""))
+        self.fc_output_dir = QLineEdit(fc.get("output_dir", ""))
+        self.fc_input_formats = QLineEdit(", ".join(fc.get("input_formats", [])))
+        self.fc_output_format = QLineEdit(fc.get("output_format", ""))
+        fc_layout.addRow("輸入資料夾", self.fc_input_dir)
+        fc_layout.addRow("輸出資料夾", self.fc_output_dir)
+        fc_layout.addRow("輸入格式", self.fc_input_formats)
+        fc_layout.addRow("輸出格式", self.fc_output_format)
+        fc_group.setLayout(fc_layout)
+        layout.addWidget(fc_group)
+
+        # 按鈕
+        button_box = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.save)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def save(self) -> None:
+        self.config["pipeline"]["log_file"] = self.log_file_edit.text()
+        for task in self.config["pipeline"]["tasks"]:
+            task["enabled"] = self.task_checkboxes[task["name"]].isChecked()
+
+        fc = self.config.setdefault("format_conversion", {})
+        fc["input_dir"] = self.fc_input_dir.text()
+        fc["output_dir"] = self.fc_output_dir.text()
+        fc["input_formats"] = [
+            s.strip() for s in self.fc_input_formats.text().split(",") if s.strip()
+        ]
+        fc["output_format"] = self.fc_output_format.text()
+
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(self.config, f, allow_unicode=True)
+        self.accept()
+
 class VisionSuiteUI(QWidget):
     def __init__(self) -> None:
         super().__init__()
@@ -39,6 +122,8 @@ class VisionSuiteUI(QWidget):
         self.setStyleSheet(
             """
             QWidget{font-size:14px;}
+            QGroupBox{font-weight:bold; border:1px solid #cccccc; margin-top:10px;}
+            QGroupBox::title{subcontrol-origin: margin; left:10px; padding:0 3px 0 3px;}
             QPushButton{padding:6px 12px;}
             """
         )
@@ -50,8 +135,11 @@ class VisionSuiteUI(QWidget):
         self.config_label = QLabel("使用預設 config.yaml")
         config_btn = QPushButton("選擇配置檔")
         config_btn.clicked.connect(self.select_config)
+        edit_btn = QPushButton("編輯配置")
+        edit_btn.clicked.connect(self.edit_config)
         config_layout.addWidget(self.config_label)
         config_layout.addWidget(config_btn)
+        config_layout.addWidget(edit_btn)
         layout.addLayout(config_layout)
 
         # 任務勾選框
@@ -106,6 +194,9 @@ class VisionSuiteUI(QWidget):
         # 日誌輸出區域
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        self.log_output.setStyleSheet(
+            "font-family: Consolas, monospace; background:#f9f9f9;"
+        )
         layout.addWidget(self.log_output)
 
         self.config_path = "config.yaml"
@@ -136,6 +227,11 @@ class VisionSuiteUI(QWidget):
                 self.output_format_edit.setPlaceholderText(fc["output_format"])
         except Exception as e:
             QMessageBox.warning(self, "警告", f"無法讀取配置: {e}")
+
+    def edit_config(self) -> None:
+        dialog = ConfigEditorDialog(self.config_path, self)
+        if dialog.exec_():
+            self.apply_config_defaults()
 
     def execute_pipeline(self) -> None:
         selected_tasks = [name for name, cb in self.tasks.items() if cb.isChecked()]
