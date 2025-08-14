@@ -5,20 +5,22 @@ from pathlib import Path
 
 def load_reference_images(ref_folder, input_formats):
     """讀取正常圖像資料夾並生成參考模板（平均圖像）"""
-    ref_images = []
+    ref_avg = None
+    n = 0
     for file in os.listdir(ref_folder):
         if any(file.lower().endswith(fmt) for fmt in input_formats):
             img_path = os.path.join(ref_folder, file)
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             if img is not None:
-                ref_images.append(img)
-    
-    if not ref_images:
+                if ref_avg is None:
+                    ref_avg = np.zeros_like(img, dtype=np.float32)
+                ref_avg = (ref_avg * n + img.astype(np.float32)) / (n + 1)
+                n += 1
+
+    if n == 0:
         raise ValueError("正常圖像資料夾中沒有可用的圖像！")
-    
-    ref_images = [img.astype(np.float32) for img in ref_images]
-    ref_avg = np.mean(ref_images, axis=0).astype(np.uint8)
-    return ref_avg
+
+    return ref_avg.astype(np.uint8)
 
 def generate_anomaly_mask(ref_img, test_img, threshold=30):
     """生成異常mask：比較測試圖像與參考圖像的差異"""
