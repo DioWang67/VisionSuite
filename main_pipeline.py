@@ -89,39 +89,54 @@ def interactive_task_selection(config):
     selected_tasks = [all_tasks[i] for i in selected_indices if 0 <= i < len(all_tasks)]
     return selected_tasks
 
+def run_format_conversion(config, args):
+    task_config = config['format_conversion'].copy()
+    if args.input_format:
+        task_config['input_formats'] = [args.input_format]
+    if args.output_format:
+        task_config['output_format'] = args.output_format
+    convert_format(task_config)
+
+def run_anomaly_detection(config, args):
+    process_anomaly_detection(config)
+
+def run_yolo_augmentation(config, args):
+    augmentor = DataAugmentor()
+    augmentor.config = config['yolo_augmentation']
+    augmentor._setup_output_dirs()
+    augmentor.augmentations = augmentor._create_augmentations()
+    augmentor.process_dataset()
+
+def run_image_augmentation(config, args):
+    augmentor = ImageAugmentor()
+    augmentor.config = config['image_augmentation']
+    augmentor._setup_output_dirs()
+    augmentor.augmentations = augmentor._create_augmentations()
+    augmentor.process_dataset()
+
+def run_dataset_splitter(config, args):
+    split_dataset(config)
+
+TASK_HANDLERS = {
+    "format_conversion": run_format_conversion,
+    "anomaly_detection": run_anomaly_detection,
+    "yolo_augmentation": run_yolo_augmentation,
+    "image_augmentation": run_image_augmentation,
+    "dataset_splitter": run_dataset_splitter,
+}
+
 def run_pipeline(tasks, config, logger, args):
     """執行指定的任務流程"""
     tasks = validate_dependencies(tasks, config, logger)
-    
+
     for task in tasks:
         logger.info(f"開始執行任務: {task}")
+        handler = TASK_HANDLERS.get(task)
+        if not handler:
+            logger.warning(f"未知任務: {task}")
+            continue
         try:
-            if task == "format_conversion":
-                task_config = config['format_conversion'].copy()
-                if args.input_format:
-                    task_config['input_formats'] = [args.input_format]
-                if args.output_format:
-                    task_config['output_format'] = args.output_format
-                convert_format(task_config)
-            elif task == "anomaly_detection":
-                process_anomaly_detection(config)
-            elif task == "yolo_augmentation":
-                augmentor = DataAugmentor()
-                augmentor.config = config['yolo_augmentation']
-                augmentor._setup_output_dirs()
-                augmentor.augmentations = augmentor._create_augmentations()
-                augmentor.process_dataset()
-            elif task == "image_augmentation":
-                augmentor = ImageAugmentor()
-                augmentor.config = config['image_augmentation']
-                augmentor._setup_output_dirs()
-                augmentor.augmentations = augmentor._create_augmentations()
-                augmentor.process_dataset()
-            elif task == "dataset_splitter":
-                split_dataset(config)
-            else:
-                logger.warning(f"未知任務: {task}")
-                continue
+            handler(config, args)
             logger.info(f"任務 {task} 完成")
         except Exception as e:
             logger.error(f"任務 {task} 執行失敗: {e}")
