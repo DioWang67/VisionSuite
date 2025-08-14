@@ -160,7 +160,7 @@ class DataAugmentor:
         """處理單張圖片的增強"""
         try:
             img_path = Path(self.config['input']['image_dir']) / img_file
-            label_path = Path(self.config['input']['label_dir']) / img_file.replace('.jpg', '.txt').replace('.png', '.txt')
+            label_path = Path(self.config['input']['label_dir']) / (Path(img_file).stem + '.txt')
 
             # 讀取圖片
             image = cv2.imread(str(img_path))
@@ -240,8 +240,8 @@ class DataAugmentor:
             self.logger.error(f"輸入圖片目錄不存在: {input_img_dir}")
             return
             
-        img_files = [f for f in os.listdir(input_img_dir) 
-                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        img_files = [f for f in os.listdir(input_img_dir)
+                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff'))]
         
         if not img_files:
             self.logger.error("沒有找到圖片文件")

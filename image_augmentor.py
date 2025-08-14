@@ -185,8 +185,8 @@ class ImageAugmentor:
             self.logger.error(f"輸入圖片目錄不存在: {input_img_dir}")
             return
             
-        img_files = [f for f in os.listdir(input_img_dir) 
-                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        img_files = [f for f in os.listdir(input_img_dir)
+                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff'))]
         
         if not img_files:
             self.logger.error("沒有找到圖片文件")
