@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QGroupBox,
+    QDialog,
+    QPlainTextEdit,
 )
 
 from main_pipeline import load_config, setup_logging, run_pipeline
@@ -39,6 +41,8 @@ class VisionSuiteUI(QWidget):
         self.setStyleSheet(
             """
             QWidget{font-size:14px;}
+            QGroupBox{font-weight:bold; border:1px solid #cccccc; margin-top:10px;}
+            QGroupBox::title{subcontrol-origin: margin; left:10px; padding:0 3px 0 3px;}
             QPushButton{padding:6px 12px;}
             """
         )
@@ -50,8 +54,11 @@ class VisionSuiteUI(QWidget):
         self.config_label = QLabel("使用預設 config.yaml")
         config_btn = QPushButton("選擇配置檔")
         config_btn.clicked.connect(self.select_config)
+        edit_btn = QPushButton("編輯配置")
+        edit_btn.clicked.connect(self.edit_config)
         config_layout.addWidget(self.config_label)
         config_layout.addWidget(config_btn)
+        config_layout.addWidget(edit_btn)
         layout.addLayout(config_layout)
 
         # 任務勾選框
@@ -106,6 +113,9 @@ class VisionSuiteUI(QWidget):
         # 日誌輸出區域
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        self.log_output.setStyleSheet(
+            "font-family: Consolas, monospace; background:#f9f9f9;"
+        )
         layout.addWidget(self.log_output)
 
         self.config_path = "config.yaml"
@@ -136,6 +146,38 @@ class VisionSuiteUI(QWidget):
                 self.output_format_edit.setPlaceholderText(fc["output_format"])
         except Exception as e:
             QMessageBox.warning(self, "警告", f"無法讀取配置: {e}")
+
+    def edit_config(self) -> None:
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            QMessageBox.warning(self, "警告", f"無法讀取配置: {e}")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("編輯配置")
+        dialog.resize(600, 800)
+        layout = QVBoxLayout(dialog)
+        text_edit = QPlainTextEdit()
+        text_edit.setPlainText(content)
+        text_edit.setStyleSheet("font-family: Consolas, monospace;")
+        layout.addWidget(text_edit)
+
+        save_btn = QPushButton("儲存")
+
+        def save() -> None:
+            try:
+                with open(self.config_path, "w", encoding="utf-8") as f:
+                    f.write(text_edit.toPlainText())
+                dialog.accept()
+                self.apply_config_defaults()
+            except Exception as e:
+                QMessageBox.critical(self, "錯誤", f"無法儲存配置: {e}")
+
+        save_btn.clicked.connect(save)
+        layout.addWidget(save_btn)
+        dialog.exec_()
 
     def execute_pipeline(self) -> None:
         selected_tasks = [name for name, cb in self.tasks.items() if cb.isChecked()]
