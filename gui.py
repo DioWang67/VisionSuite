@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QHBoxLayout,
     QLineEdit,
+    QGroupBox,
 )
 
 from main_pipeline import load_config, setup_logging, run_pipeline
@@ -35,6 +36,12 @@ class VisionSuiteUI(QWidget):
         super().__init__()
         self.setWindowTitle("VisionSuite 圖形介面")
         self.resize(500, 400)
+        self.setStyleSheet(
+            """
+            QWidget{font-size:14px;}
+            QPushButton{padding:6px 12px;}
+            """
+        )
 
         layout = QVBoxLayout(self)
 
@@ -48,6 +55,8 @@ class VisionSuiteUI(QWidget):
         layout.addLayout(config_layout)
 
         # 任務勾選框
+        task_group = QGroupBox("任務選擇")
+        task_layout = QVBoxLayout()
         self.tasks = {
             "format_conversion": QCheckBox("格式轉換"),
             "anomaly_detection": QCheckBox("異常檢測"),
@@ -56,7 +65,7 @@ class VisionSuiteUI(QWidget):
             "dataset_splitter": QCheckBox("資料集分割"),
         }
         for cb in self.tasks.values():
-            layout.addWidget(cb)
+            task_layout.addWidget(cb)
 
         # 任務批次操作按鈕
         task_btn_layout = QHBoxLayout()
@@ -66,9 +75,12 @@ class VisionSuiteUI(QWidget):
         clear_all_btn.clicked.connect(self.clear_all_tasks)
         task_btn_layout.addWidget(select_all_btn)
         task_btn_layout.addWidget(clear_all_btn)
-        layout.addLayout(task_btn_layout)
+        task_layout.addLayout(task_btn_layout)
+        task_group.setLayout(task_layout)
+        layout.addWidget(task_group)
 
         # 格式覆寫輸入
+        format_group = QGroupBox("格式覆寫")
         format_layout = QHBoxLayout()
         self.input_format_edit = QLineEdit()
         self.input_format_edit.setPlaceholderText(".bmp")
@@ -78,12 +90,18 @@ class VisionSuiteUI(QWidget):
         format_layout.addWidget(self.input_format_edit)
         format_layout.addWidget(QLabel("輸出格式"))
         format_layout.addWidget(self.output_format_edit)
-        layout.addLayout(format_layout)
+        format_group.setLayout(format_layout)
+        layout.addWidget(format_group)
 
-        # 執行按鈕
+        # 執行與日誌操作按鈕
+        run_layout = QHBoxLayout()
         run_btn = QPushButton("執行流程")
         run_btn.clicked.connect(self.execute_pipeline)
-        layout.addWidget(run_btn)
+        clear_log_btn = QPushButton("清除日誌")
+        clear_log_btn.clicked.connect(self.log_clear)
+        run_layout.addWidget(run_btn)
+        run_layout.addWidget(clear_log_btn)
+        layout.addLayout(run_layout)
 
         # 日誌輸出區域
         self.log_output = QTextEdit()
@@ -91,6 +109,7 @@ class VisionSuiteUI(QWidget):
         layout.addWidget(self.log_output)
 
         self.config_path = "config.yaml"
+        self.apply_config_defaults()
 
     def select_config(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -99,6 +118,24 @@ class VisionSuiteUI(QWidget):
         if path:
             self.config_path = path
             self.config_label.setText(path)
+            self.apply_config_defaults()
+
+    def apply_config_defaults(self) -> None:
+        try:
+            config = load_config(self.config_path)
+            task_configs = {
+                t["name"]: t.get("enabled", True) for t in config["pipeline"]["tasks"]
+            }
+            for name, cb in self.tasks.items():
+                cb.setChecked(task_configs.get(name, False))
+
+            fc = config.get("format_conversion", {})
+            if fc.get("input_formats"):
+                self.input_format_edit.setPlaceholderText(fc["input_formats"][0])
+            if fc.get("output_format"):
+                self.output_format_edit.setPlaceholderText(fc["output_format"])
+        except Exception as e:
+            QMessageBox.warning(self, "警告", f"無法讀取配置: {e}")
 
     def execute_pipeline(self) -> None:
         selected_tasks = [name for name, cb in self.tasks.items() if cb.isChecked()]
@@ -137,9 +174,12 @@ class VisionSuiteUI(QWidget):
         for cb in self.tasks.values():
             cb.setChecked(False)
 
+    def log_clear(self) -> None:
+        self.log_output.clear()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ui = VisionSuiteUI()
     ui.show()
     sys.exit(app.exec_())
+
