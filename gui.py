@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QMessageBox,
     QHBoxLayout,
+    QLineEdit,
 )
 
 from main_pipeline import load_config, setup_logging, run_pipeline
@@ -57,6 +58,28 @@ class VisionSuiteUI(QWidget):
         for cb in self.tasks.values():
             layout.addWidget(cb)
 
+        # 任務批次操作按鈕
+        task_btn_layout = QHBoxLayout()
+        select_all_btn = QPushButton("全選")
+        select_all_btn.clicked.connect(self.select_all_tasks)
+        clear_all_btn = QPushButton("全清")
+        clear_all_btn.clicked.connect(self.clear_all_tasks)
+        task_btn_layout.addWidget(select_all_btn)
+        task_btn_layout.addWidget(clear_all_btn)
+        layout.addLayout(task_btn_layout)
+
+        # 格式覆寫輸入
+        format_layout = QHBoxLayout()
+        self.input_format_edit = QLineEdit()
+        self.input_format_edit.setPlaceholderText(".bmp")
+        self.output_format_edit = QLineEdit()
+        self.output_format_edit.setPlaceholderText(".png")
+        format_layout.addWidget(QLabel("輸入格式"))
+        format_layout.addWidget(self.input_format_edit)
+        format_layout.addWidget(QLabel("輸出格式"))
+        format_layout.addWidget(self.output_format_edit)
+        layout.addLayout(format_layout)
+
         # 執行按鈕
         run_btn = QPushButton("執行流程")
         run_btn.clicked.connect(self.execute_pipeline)
@@ -82,6 +105,8 @@ class VisionSuiteUI(QWidget):
         if not selected_tasks:
             QMessageBox.warning(self, "提示", "請至少選擇一個任務")
             return
+
+        self.log_output.clear()
         try:
             config = load_config(self.config_path)
             logger = setup_logging(config["pipeline"]["log_file"])
@@ -92,13 +117,25 @@ class VisionSuiteUI(QWidget):
             logger.addHandler(text_handler)
 
             args = argparse.Namespace(
-                config=self.config_path, input_format=None, output_format=None
+                config=self.config_path,
+                input_format=self.input_format_edit.text().strip() or None,
+                output_format=self.output_format_edit.text().strip() or None,
             )
 
             run_pipeline(selected_tasks, config, logger, args)
             QMessageBox.information(self, "完成", "流程執行完成")
         except Exception as e:
             QMessageBox.critical(self, "錯誤", str(e))
+        finally:
+            logger.removeHandler(text_handler)
+
+    def select_all_tasks(self) -> None:
+        for cb in self.tasks.values():
+            cb.setChecked(True)
+
+    def clear_all_tasks(self) -> None:
+        for cb in self.tasks.values():
+            cb.setChecked(False)
 
 
 if __name__ == "__main__":
