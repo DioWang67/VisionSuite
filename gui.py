@@ -779,10 +779,13 @@ class AdvancedConfigDialog(QDialog):
             # 儲存到檔案
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(self.config, f, allow_unicode=True, default_flow_style=False, indent=2)
-            
+
             QMessageBox.information(self, "成功", "配置已成功儲存！")
+            parent = self.parent()
+            if parent and hasattr(parent, "reload_config"):
+                parent.reload_config()
             self.accept()
-            
+
         except Exception as e:
             QMessageBox.critical(self, "錯誤", f"儲存配置時發生錯誤：{e}")
     

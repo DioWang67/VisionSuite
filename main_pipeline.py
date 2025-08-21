@@ -25,6 +25,24 @@ def load_config(config_path="config.yaml"):
     with open(config_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
+
+def load_config_if_updated(config_path, config, logger):
+    """檢查配置檔案是否更新，必要時重新載入"""
+    config_file = Path(config_path)
+    current_mtime = config_file.stat().st_mtime
+    last_mtime = getattr(load_config_if_updated, "last_mtime", None)
+
+    if last_mtime is None:
+        load_config_if_updated.last_mtime = current_mtime
+        return config
+
+    if current_mtime > last_mtime:
+        logger.info("檢測到配置檔案更新，重新載入")
+        load_config_if_updated.last_mtime = current_mtime
+        return load_config(config_path)
+
+    return config
+
 def validate_dependencies(tasks, config, logger):
     """驗證任務依賴關係，並保持原始任務順序"""
     task_dict = {t['name']: t for t in config['pipeline']['tasks']}
@@ -130,6 +148,7 @@ def run_pipeline(tasks, config, logger, args):
     tasks = validate_dependencies(tasks, config, logger)
 
     for task in tasks:
+        config = load_config_if_updated(args.config, config, logger)
         logger.info(f"開始執行任務: {task}")
         handler = TASK_HANDLERS.get(task)
         if not handler:
