@@ -93,17 +93,7 @@ class ImageAugmentor:
         
         aug_list = []
 
-        # 等比例縮放並用黑邊填充
-        aug_list.append(A.LongestMaxSize(max_size=640, interpolation=cv2.INTER_AREA, p=1.0))
-        aug_list.append(A.PadIfNeeded(
-            min_height=640,
-            min_width=640,
-            border_mode=cv2.BORDER_CONSTANT,
-            value=(0, 0, 0),  # 黑色填充
-            p=1.0
-        ))
-
-        # 建立增強操作列表
+        # 建立增強操作列表（先執行其他增強）
         if ops_config.get('flip'):
             aug_list.append(A.HorizontalFlip(p=ops_config['flip']['probability']))
         
@@ -143,6 +133,16 @@ class ImageAugmentor:
             aug_list.append(A.MotionBlur(
                 blur_limit=blur_kernel if isinstance(blur_kernel, int) else blur_kernel[1], p=0.5))
 
+        # 最後執行尺寸調整，確保輸出為 640x640
+        aug_list.append(A.LongestMaxSize(max_size=640, interpolation=cv2.INTER_AREA, p=1.0))
+        aug_list.append(A.PadIfNeeded(
+            min_height=640,
+            min_width=640,
+            border_mode=cv2.BORDER_CONSTANT,
+            value=(0, 0, 0),  # 黑色填充
+            p=1.0
+        ))
+
         return A.Compose(aug_list)
 
     def _process_single_image(self, img_file: str) -> None:
@@ -162,6 +162,10 @@ class ImageAugmentor:
                     # 應用增強
                     transformed = self.augmentations(image=image)
                     augmented_image = transformed['image']
+
+                    # 檢查圖像尺寸
+                    if augmented_image.shape[:2] != (640, 640):
+                        self.logger.warning(f"圖像 {img_file} 增強後尺寸不為 640x640: {augmented_image.shape[:2]}")
 
                     # 保存增強後的圖片
                     aug_img_filename = f"{Path(img_file).stem}_aug_{i + 1}.png"

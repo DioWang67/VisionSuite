@@ -6,7 +6,7 @@ anomaly_detection:
   output_folder: ./datasets/for_anomalib/ground_truth/Reversed_Connection
   reference_folder: ./datasets/for_anomalib/train/good
   test_folder: ./datasets/for_anomalib/test/Reversed_Connection
-  threshold: 70
+  threshold: 50
 format_conversion:
   input_dir: ./datasets/converter_target
   input_formats:
@@ -16,7 +16,7 @@ format_conversion:
   quality: 95
 image_augmentation:
   augmentation:
-    num_images: 200
+    num_images: 50
     num_operations:
     - 2
     - 4
@@ -58,7 +58,7 @@ image_augmentation:
   input:
     image_dir: ./target
   output:
-    image_dir: ./datasets/for_anomalib/train/good
+    image_dir: D:/Git/robotlearning/picture_tool/datasets/for_anomalib/train/good
   processing:
     num_workers: 2
 pipeline:
