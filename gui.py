@@ -14,19 +14,26 @@ from PyQt5.QtWidgets import (
     QSlider, QTreeWidget, QTreeWidgetItem, QToolBar, QAction,
     QStatusBar, QMenuBar, QMenu
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QObject
 from PyQt5.QtGui import QIcon, QFont, QPalette, QColor, QPixmap
 
 from main_pipeline import load_config, setup_logging, run_pipeline
 
 
-class QTextEditLogger(logging.Handler):
-    """將日誌輸出導向 QTextEdit，支援不同級別的顏色顯示"""
-    
+class QTextEditLogger(QObject, logging.Handler):
+    """將日誌輸出導向 QTextEdit，支援不同級別的顏色顯示。
+
+    若需透過訊號傳遞 ``QTextCursor`` 等型別，請先呼叫 ``qRegisterMetaType`` 進行註冊。
+    """
+
+    log_signal = pyqtSignal(str)
+
     def __init__(self, widget: QTextEdit):
-        super().__init__()
+        QObject.__init__(self)
+        logging.Handler.__init__(self)
         self.widget = widget
-        
+        self.log_signal.connect(self.widget.append)
+
     def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
         # 根據日誌級別設定顏色
@@ -38,8 +45,8 @@ class QTextEditLogger(logging.Handler):
             color_msg = f'<span style="color: white;">{msg}</span>'
         else:
             color_msg = f'<span style="color: gray;">{msg}</span>'
-        
-        self.widget.append(color_msg)
+
+        self.log_signal.emit(color_msg)
 
 
 class PipelineWorker(QThread):
