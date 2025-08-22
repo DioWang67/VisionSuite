@@ -106,7 +106,7 @@ class DataAugmentor:
             min_height=640,
             min_width=640,
             border_mode=cv2.BORDER_CONSTANT,
-            value=(0, 0, 0),  # 黑色填充
+            border_value=(0, 0, 0),  # 黑色填充
             p=1.0
         ))
 

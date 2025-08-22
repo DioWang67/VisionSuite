@@ -149,7 +149,7 @@ class DataAugmentor:
             min_height=640,
             min_width=640,
             border_mode=cv2.BORDER_CONSTANT,
-            value=(128, 128, 128),  # 黑色填充
+            border_value=(128, 128, 128),  # 灰色填充
             p=1.0
         ))
         return A.Compose(
