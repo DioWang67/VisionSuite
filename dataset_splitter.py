@@ -1,10 +1,27 @@
+import logging
 import shutil
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
 
-def split_dataset(config):
-    """將圖像和標註分割為訓練、驗證和測試集"""
+logger = logging.getLogger(__name__)
+
+
+def split_dataset(config, log_file=None, logger=None):
+    """將圖像和標註分割為訓練、驗證和測試集
+
+    Args:
+        config: 分割設定。
+        log_file: 選用的 log 檔案路徑。
+        logger: 可傳入外部 logger 以集中管理訊息。
+    """
+    logger = logger or logging.getLogger(__name__)
+    if log_file:
+        handler = logging.FileHandler(log_file)
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(handler)
     split_config = config["train_test_split"]
     image_dir = Path(split_config["input"]["image_dir"])
     label_dir = Path(split_config["input"]["label_dir"])
@@ -32,9 +49,9 @@ def split_dataset(config):
     missing_labels = image_dict.keys() - label_dict.keys()
 
     for key in sorted(missing_images):
-        print(f"警告: 找不到影像檔案 {label_dict[key]}")
+        logger.warning(f"找不到影像檔案 {label_dict[key]}")
     for key in sorted(missing_labels):
-        print(f"警告: 找不到標籤檔案 {image_dict[key]}")
+        logger.warning(f"找不到標籤檔案 {image_dict[key]}")
 
     paired_images = [image_dict[k] for k in sorted(common_keys)]
     paired_labels = [label_dict[k] for k in sorted(common_keys)]
@@ -67,5 +84,5 @@ def split_dataset(config):
     copy_files(val_images, val_labels, "val")
     copy_files(test_images, test_labels, "test")
 
-    print("文件已成功分配並複製到訓練、驗證和測試目錄中")
+    logger.info("文件已成功分配並複製到訓練、驗證和測試目錄中")
 
