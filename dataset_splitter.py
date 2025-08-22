@@ -16,12 +16,20 @@ def split_dataset(config, log_file=None, logger=None):
         logger: 可傳入外部 logger 以集中管理訊息。
     """
     logger = logger or logging.getLogger(__name__)
+    handler = None
     if log_file:
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        log_path = Path(log_file).resolve()
+        exists = any(
+            isinstance(h, logging.FileHandler)
+            and Path(h.baseFilename) == log_path
+            for h in logger.handlers
         )
-        logger.addHandler(handler)
+        if not exists:
+            handler = logging.FileHandler(log_path)
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+            )
+            logger.addHandler(handler)
     split_config = config["train_test_split"]
     image_dir = Path(split_config["input"]["image_dir"])
     label_dir = Path(split_config["input"]["label_dir"])
@@ -85,4 +93,7 @@ def split_dataset(config, log_file=None, logger=None):
     copy_files(test_images, test_labels, "test")
 
     logger.info("文件已成功分配並複製到訓練、驗證和測試目錄中")
+    if handler:
+        logger.removeHandler(handler)
+        handler.close()
 
