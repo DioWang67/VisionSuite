@@ -678,7 +678,16 @@ class AdvancedConfigDialog(QDialog):
             output_config.get("output_dir", "")
         )
         layout.addRow("輸出目錄:", out_container)
-        
+
+        # 支援格式
+        input_formats = ", ".join(split_config.get("input_formats", [".png", ".jpg", ".jpeg"]))
+        self.split_input_formats = QLineEdit(input_formats)
+        layout.addRow("支援格式:", self.split_input_formats)
+
+        # 標籤格式
+        self.split_label_format = QLineEdit(split_config.get("label_format", ".txt"))
+        layout.addRow("標籤格式:", self.split_label_format)
+
         # 分割比例
         split_group = QGroupBox("分割比例")
         split_layout = QFormLayout()
@@ -775,6 +784,51 @@ class AdvancedConfigDialog(QDialog):
             aug.setdefault("output", {})["image_dir"] = self.aug_output_dir.text()
             aug.setdefault("augmentation", {})["num_images"] = self.aug_num_images.value()
             aug.setdefault("processing", {})["num_workers"] = self.aug_num_workers.value()
+
+            # 更新異常檢測設定
+            anomaly = self.config.setdefault("anomaly_detection", {})
+            anomaly["threshold"] = self.anomaly_threshold.value()
+            anomaly["reference_folder"] = self.anomaly_ref_folder.text()
+            anomaly["test_folder"] = self.anomaly_test_folder.text()
+            anomaly["output_folder"] = self.anomaly_output_folder.text()
+            anomaly["input_formats"] = [
+                s.strip() for s in self.anomaly_input_formats.text().split(",") if s.strip()
+            ]
+
+            # 更新 YOLO 增強設定
+            yolo = self.config.setdefault("yolo_augmentation", {})
+            yolo.setdefault("input", {})["image_dir"] = self.yolo_img_dir.text()
+            yolo.setdefault("input", {})["label_dir"] = self.yolo_label_dir.text()
+            yolo.setdefault("output", {})["image_dir"] = self.yolo_out_img_dir.text()
+            yolo.setdefault("output", {})["label_dir"] = self.yolo_out_label_dir.text()
+            yolo.setdefault("processing", {})["num_workers"] = self.yolo_num_workers.value()
+            yolo_aug = yolo.setdefault("augmentation", {})
+            yolo_aug["num_images"] = self.yolo_num_images.value()
+            yolo_aug["num_operations"] = [self.num_ops_min.value(), self.num_ops_max.value()]
+            yolo_ops = yolo_aug.setdefault("operations", {})
+            yolo_ops["blur"] = {"kernel": [self.blur_min.value(), self.blur_max.value()]}
+            yolo_ops["contrast"] = {"range": [self.contrast_min.value(), self.contrast_max.value()]}
+            yolo_ops["flip"] = {"probability": self.flip_prob.value()}
+            yolo_ops["hue"] = {"range": [self.hue_min.value(), self.hue_max.value()]}
+            yolo_ops["multiply"] = {"range": [self.multiply_min.value(), self.multiply_max.value()]}
+            yolo_ops["noise"] = {"scale": [self.noise_min.value(), self.noise_max.value()]}
+            yolo_ops["perspective"] = {"scale": [self.perspective_min.value(), self.perspective_max.value()]}
+            yolo_ops["rotate"] = {"angle": [self.rotate_min.value(), self.rotate_max.value()]}
+            yolo_ops["scale"] = {"range": [self.scale_min.value(), self.scale_max.value()]}
+
+            # 更新資料集分割設定
+            split = self.config.setdefault("train_test_split", {})
+            split.setdefault("input", {})["image_dir"] = self.split_img_dir.text()
+            split.setdefault("input", {})["label_dir"] = self.split_label_dir.text()
+            split.setdefault("output", {})["output_dir"] = self.split_output_dir.text()
+            split["input_formats"] = [
+                s.strip() for s in self.split_input_formats.text().split(",") if s.strip()
+            ]
+            split["label_format"] = self.split_label_format.text()
+            ratios = split.setdefault("split_ratios", {})
+            ratios["train"] = self.train_ratio.value()
+            ratios["val"] = self.val_ratio.value()
+            ratios["test"] = self.test_ratio.value()
             
             # 儲存到檔案
             with open(self.config_path, "w", encoding="utf-8") as f:
