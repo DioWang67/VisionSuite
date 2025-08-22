@@ -116,10 +116,10 @@ yolo_augmentation:
         - 1
       contrast:
         range:
-        - 1
-        - 1
+        - 1.0
+        - 1.0
       flip:
-        probability: 0
+        probability: 0.0
       hue:
         range:
         - 0
@@ -134,19 +134,19 @@ yolo_augmentation:
         - 0
       perspective:
         scale:
-        - 0
-        - 0
+        - 0.0
+        - 0.0
       rotate:
         angle:
         - 0
         - 0
       scale:
         range:
-        - 1
-        - 1
+        - 1.0
+        - 1.0
   input:
-    image_dir: ./target/yolo_augmentation/images
-    label_dir: ./target/yolo_augmentation/labels
+    image_dir: ./target/PCBA_back/images
+    label_dir: ./target/PCBA_back/labels
   output:
     image_dir: ./datasets/yolo_augmentation_output/images
     label_dir: ./datasets/yolo_augmentation_output/labels
