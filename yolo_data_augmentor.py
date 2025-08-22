@@ -110,7 +110,8 @@ class DataAugmentor:
         
         if ops_config.get('rotate'):
             angle = ops_config['rotate']['angle']
-            aug_list.append(A.Rotate(limit=angle if isinstance(angle, int) else angle[1], p=0.5))
+            limit = angle if isinstance(angle, (int, float)) else (angle[0], angle[1])
+            aug_list.append(A.Rotate(limit=limit, p=0.5))
         
         if ops_config.get('multiply'):
             multiply_range = ops_config['multiply']['range']
