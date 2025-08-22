@@ -96,7 +96,7 @@ class DataAugmentor:
         
         aug_list = []
 
-        # 等比例縮放並用黑邊填充
+        # 等比例縮放並用灰邊填充
         aug_list.append(A.LongestMaxSize(max_size=640, interpolation=cv2.INTER_AREA, p=1.0))
 
 
@@ -144,12 +144,12 @@ class DataAugmentor:
             blur_kernel = ops_config['blur']['kernel']
             aug_list.append(A.MotionBlur(
                 blur_limit=blur_kernel if isinstance(blur_kernel, int) else blur_kernel[1], p=0.5))
-            
+         
         aug_list.append(A.PadIfNeeded(
             min_height=640,
             min_width=640,
             border_mode=cv2.BORDER_CONSTANT,
-            border_value=(128, 128, 128),  # 灰色填充
+            value=(128, 128, 128),  # 灰色填充
             p=1.0
         ))
         return A.Compose(
