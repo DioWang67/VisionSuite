@@ -15,6 +15,11 @@ def split_dataset(config):
     input_formats = split_config["input_formats"]
     label_format = split_config["label_format"]
 
+    if abs(train_ratio + val_ratio + test_ratio - 1.0) > 1e-6:
+        raise ValueError("split_ratios 必須相加為 1")
+    if not image_dir.exists() or not label_dir.exists():
+        raise FileNotFoundError("輸入影像或標註目錄不存在")
+
     image_dict = {
         p.stem: p for p in image_dir.glob("*") if p.suffix.lower() in input_formats
     }
