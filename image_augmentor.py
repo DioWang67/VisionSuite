@@ -1,16 +1,12 @@
 import cv2
 import albumentations as A
-import numpy as np
 import os
 from multiprocessing import Pool, cpu_count
-import random
 import logging
 from pathlib import Path
 from tqdm import tqdm
 import time
 import yaml
-import argparse
-from typing import List, Dict
 
 class ImageAugmentor:
     def __init__(self, config_path: str = None):
@@ -119,7 +115,7 @@ class ImageAugmentor:
         if ops_config.get('hue'):
             hue_range = ops_config['hue']['range']
             aug_list.append(A.HueSaturationValue(
-                hue_shift_limit=hue_range if isinstance(hue_range, int) else hue_range[1], p=0.5))
+                hue_shift_limit=hue_range if isinstance(hue_range, int) else hue_range, p=0.5))
         
         if ops_config.get('noise'):
             noise_scale = ops_config['noise']['scale']
