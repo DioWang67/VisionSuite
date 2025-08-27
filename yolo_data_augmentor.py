@@ -192,7 +192,7 @@ class DataAugmentor:
         if ops_config.get('noise'):
             noise_scale = ops_config['noise']['scale']
             # 移除不支持的參數
-            aug_list.append(A.GaussNoise(mean=0, var_limit=(0, noise_scale[1]*255), p=0.5))
+            aug_list.append(A.GaussNoise(mean=0, var_limit=(0, noise_scale[1]*255), p=0.0))
         
         if ops_config.get('perspective'):
             perspective_scale = ops_config['perspective']['scale']
@@ -202,7 +202,7 @@ class DataAugmentor:
         if ops_config.get('blur'):
             blur_kernel = ops_config['blur']['kernel']
             blur_limit = blur_kernel if isinstance(blur_kernel, int) else blur_kernel
-            aug_list.append(A.MotionBlur(blur_limit=blur_limit, p=0.5))
+            aug_list.append(A.MotionBlur(blur_limit=blur_limit, p=0))
 
         # 移除自動填充，改為手動處理
         # aug_list.append(A.PadIfNeeded(...))
