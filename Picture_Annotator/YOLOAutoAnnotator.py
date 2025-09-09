@@ -149,7 +149,7 @@ class DataAugmentor:
         if ops_config.get('blur'):
             blur_kernel = ops_config['blur']['kernel']
             aug_list.append(A.MotionBlur(
-                blur_limit=blur_kernel if isinstance(blur_kernel, int) else blur_kernel[1], p=0.5))
+                blur_limit=blur_kernel if isinstance(blur_kernel, int) else blur_kernel[1], p=0.0))
 
         return A.Compose(
             aug_list,

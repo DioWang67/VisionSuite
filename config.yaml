@@ -105,15 +105,15 @@ train_test_split:
     val: 0.15
 yolo_augmentation:
   augmentation:
-    num_images: 20
+    num_images: 10
     num_operations:
-    - 3
-    - 5
+    - 1
+    - 1
     operations:
       blur:
         kernel:
-        - 1
-        - 1
+        - 0
+        - 0
       contrast:
         range:
         - 1.0
@@ -126,8 +126,8 @@ yolo_augmentation:
         - 0
       multiply:
         range:
-        - 0.9
-        - 1.1
+        - 1.0
+        - 1.0
       noise:
         scale:
         - 0
@@ -145,8 +145,8 @@ yolo_augmentation:
         - 1.0
         - 1.0
   input:
-    image_dir: ./target/PCBA_back/images
-    label_dir: ./target/PCBA_back/labels
+    image_dir: D:/Git/robotlearning/picture_tool/target/LED/images
+    label_dir: D:/Git/robotlearning/picture_tool/target/LED/labels
   output:
     image_dir: ./datasets/yolo_augmentation_output/images
     label_dir: ./datasets/yolo_augmentation_output/labels
